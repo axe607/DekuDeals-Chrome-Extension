@@ -1,0 +1,43 @@
+{
+    "name": "DekuDeals + eshop-prices",
+    "description": "__MSG_name__",
+    "default_locale": "en",
+    "version": "1.0",
+    "manifest_version": 3,
+    "action": {
+        "default_icon": {
+            "16": "/images/nintendo-switch16.png",
+            "32": "/images/nintendo-switch32.png",
+            "48": "/images/nintendo-switch48.png",
+            "128": "/images/nintendo-switch128.png"
+        }
+    },
+    "icons": {
+        "16": "/images/nintendo-switch16.png",
+        "32": "/images/nintendo-switch32.png",
+        "48": "/images/nintendo-switch48.png",
+        "128": "/images/nintendo-switch128.png"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": ["svg/*"],
+            "matches": [ "https://*/*" ]
+        }
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://www.dekudeals.com/items/*"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ],
+    "host_permissions": [
+        "https://eshop-prices.com/*"
+    ]
+}
