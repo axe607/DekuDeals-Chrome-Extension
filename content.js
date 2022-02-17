@@ -2,6 +2,9 @@ const title = document.querySelector(".display-5").innerText;
 const encodedTitle = encodeURIComponent(title);
 const currency = getCurrency() || 'RUS';
 
+let excludeEnebaShop = false;
+loadOptions();
+
 loadFlagsSvg();
 loadEshopPricesPage();
 
@@ -69,7 +72,9 @@ function parseEshopPricesPage(html) {
 
 function parseTop3Prices(response) {
     const page = new DOMParser().parseFromString(response.text, 'text/html').body
-    const rows = page.querySelectorAll("table.prices-table > tbody > tr.pointer");
+    const rows = excludeEnebaShop
+        ? page.querySelectorAll("table.prices-table > tbody > tr.pointer:not(.color-primary)")
+        : page.querySelectorAll("table.prices-table > tbody > tr.pointer");
 
     const eshopPricesBlock = document.querySelector('#eshop-prices');
 
@@ -252,6 +257,12 @@ function getCurrency() {
 
     var text = flagEl.parentElement.innerText;
     return text.substring(text.length - 4, text.length - 1);
+}
+
+function loadOptions() {
+    chrome.storage.local.get(['excludeEnebaShop'], function (items) {
+        excludeEnebaShop = items.excludeEnebaShop;
+    });
 }
 
 function GetLocalResource(path) {

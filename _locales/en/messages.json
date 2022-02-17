@@ -1,6 +1,22 @@
 {
     "name": {
         "message": "Inegrates best price from \"eshop-prices.com\" to DekuDeals game pages.",
-        "description": "Inegrates best price from \"eshop-prices.com\" to DekuDeals game pages."
+        "description": "Name of extension"
+    },
+    "options_title":{
+        "message": "DekuDeals Extension Options",
+        "description": "Extension Options title"
+    },
+    "options_exclude_msg":{
+        "message": "Exclude Eneba Shop",
+        "description": "Option description"
+    },
+    "options_status_msg":{
+        "message": "Options saved.",
+        "description": "Status message after save"
+    },
+    "options_save_btn":{
+        "message": "Save",
+        "description": "Option save button text"
     }
 }

@@ -2,5 +2,21 @@
     "name": {
         "message": "Добавляет лучшую цену из сайта \"eshop-prices.com\" на страницу игры DekuDeals.",
         "description": "Добавляет лучшую цену из сайта \"eshop-prices.com\" на страницу игры DekuDeals."
+    },
+    "options_title":{
+        "message": "Параметры расширения",
+        "description": "Заголовок параметров расширения"
+    },
+    "options_exclude_msg":{
+        "message": "Исключить Eneba Shop",
+        "description": "Описание параметра"
+    },
+    "options_status_msg":{
+        "message": "Настройки сохранены.",
+        "description": "Сообщение после сохранения настроек"
+    },
+    "options_save_btn":{
+        "message": "Сохранить",
+        "description": "Текст кнопки сохранения параметров"
     }
 }
