@@ -1,23 +1,25 @@
-const baseSearchUrl = "https://eshop-prices.com/games?q={0}&currency={1}"
-const baseUrl = "https://eshop-prices.com";
-
 const title = document.querySelector(".display-5").innerText;
-var searchUrl = baseSearchUrl.replace('{0}', encodeURIComponent(title));
-
+const encodedTitle = encodeURIComponent(title);
 const currency = getCurrency() || 'RUS';
-searchUrl = searchUrl.replace('{1}', currency);
 
 loadFlagsSvg();
-getEshopPricesPage(searchUrl);
-
-function getEshopPricesPage(url) {
-    chrome.runtime.sendMessage(
-        { contentScriptQuery: 'queryEshopPrice', url: url },
-        response => parseEshopPricesPage(response));
-}
+loadEshopPricesPage();
 
 function loadFlagsSvg() {
     chrome.runtime.sendMessage({ contentScriptQuery: 'queryFlagsSvg' }, response => applySvg(response));
+}
+
+function loadEshopPricesPage() {
+    chrome.runtime.sendMessage(
+        { contentScriptQuery: 'queryEshopPrice', title: encodedTitle, currency: currency },
+        response => parseEshopPricesPage(response));
+}
+
+function loadTop3Prices(url) {
+    chrome.runtime.sendMessage(
+        { contentScriptQuery: 'queryEshopGamePage', url: url },
+        null,
+        parseTop3Prices);
 }
 
 function applySvg(response) {
@@ -28,26 +30,30 @@ function applySvg(response) {
 }
 
 function parseEshopPricesPage(html) {
-    var page = new DOMParser().parseFromString(html, 'text/html').body;
+    const page = new DOMParser().parseFromString(html, 'text/html').body;
 
-    var gameItem = parseGameItems(page);
+    const gameItem = parseGameItems(page);
     if (!gameItem) {
         console.log('CANNOT FIND GAME AT ESHOP-PRICES.COM');
         return;
     }
 
+    let divWrapper = createAndAppendDivWrapper();
+    gameItem.href = gameItem.href.replace('dekudeals', 'eshop-prices').replace('www.', '');
+
+    loadTop3Prices(gameItem.href);
+
     var priceEl = gameItem.querySelector(".price")
 
-    var linkElement = document.createElement('a');
-    linkElement.href = gameItem.href;
-    linkElement.target = 'blank';
+    var linkElement = createLinkElement(gameItem.href)
     linkElement.append(priceEl);
 
-    linkElement.href = linkElement.href.replace('dekudeals', 'eshop-prices');
+    let goldDiv = document.createElement('div');
+    goldDiv.style = 'display: flex; align-items: flex-end;';
+    divWrapper.append(goldDiv);
 
-    var divElem = document.createElement('div');
-    divElem.append(createMedalElement());
-    divElem.append(linkElement);
+    goldDiv.append(createGoldMedalElement());
+    goldDiv.append(linkElement);
 
     priceEl.querySelector("svg").style = "vertical-align: bottom;";
 
@@ -55,32 +61,140 @@ function parseEshopPricesPage(html) {
 
     var originalPrice = priceEl.querySelector(".price-tag > del");
     if (originalPrice) {
-        originalPrice.style = "opacity: .4; font-size: .8em;";
+        originalPrice.style = "opacity: .5; font-size: .85em;";
     }
 
-    var flag = priceEl.querySelector("svg > use");
-    svgPath = flag.getAttribute("xlink:href");
+    correctSvgUseAttribute(priceEl.querySelector("svg > use"))
+}
 
-    var flagSvgPath = flag.getAttribute("xlink:href");
-    flagSvgPath = flagSvgPath.substring(flagSvgPath.indexOf('#i-flag'))
+function parseTop3Prices(response) {
+    const page = new DOMParser().parseFromString(response.text, 'text/html').body
+    const rows = page.querySelectorAll("table.prices-table > tbody > tr.pointer");
 
-    flag.setAttribute("xlink:href", flagSvgPath);
+    const eshopPricesBlock = document.querySelector('#eshop-prices');
 
-    var tableEl = document.querySelector(".item-price-table");
-    if (tableEl) {
-        tableEl.after(divElem);
+    eshopPricesBlock.innerHTML = '';
+    eshopPricesBlock.append(createBlockFromRow(createGoldMedalElement(), parseFlagFromRow(rows[0]), parsePriceFromRow(rows[0]), response.url, true));
+    eshopPricesBlock.append(createBlockFromRow(createSilverMedalElement(), parseFlagFromRow(rows[1]), parsePriceFromRow(rows[1]), response.url));
+    eshopPricesBlock.append(createBlockFromRow(createBronzeMedalElement(), parseFlagFromRow(rows[2]), parsePriceFromRow(rows[2]), response.url));
+}
+
+function createBlockFromRow(medalElement, svgElement, priceElement, url, excludeMargin) {
+    if (!priceElement) {
+        return '';
+    }
+
+    const div = document.createElement('div');
+    div.style = 'display: flex; align-items: flex-end;' + (excludeMargin ? '' : 'margin-left: 20px');
+    div.append(medalElement);
+
+    const linkElement = createLinkElement(url)
+    div.append(linkElement);
+
+    const spanElement = document.createElement('span');
+    linkElement.append(spanElement);
+
+    if (svgElement) {
+        spanElement.append(svgElement);
+    }
+    spanElement.append(priceElement);
+
+    return div;
+}
+
+function parseFlagFromRow(row) {
+    if (!row) {
+        return null;
+    }
+
+    const svg = row.querySelector('td svg.emoji');
+    if (!svg) {
+        return null;
+    }
+
+    svg.style = 'vertical-align: bottom; margin-right: 5px;'
+    correctSvgUseAttribute(svg.querySelector('use'));
+    return svg;
+}
+
+function parsePriceFromRow(row) {
+    if (!row) {
+        return null;
+    }
+
+    const td = row.querySelector('td.price-value');
+    const span = document.createElement('span');
+    span.style = 'display: inline-flex; flex-direction: column; align-items: flex-end;'
+    const discount = td.querySelector('.discounted');
+
+    if (discount) {
+        var originalPrice = discount.querySelector("del");
+        if (originalPrice) {
+            originalPrice.style = "opacity: .5; font-size: .85em;";
+        }
+    }
+
+    span.innerHTML = discount ? discount.innerHTML : td.innerHTML;
+    return span;
+}
+
+function createLinkElement(href) {
+    var linkElement = document.createElement('a');
+    linkElement.href = href;
+    linkElement.target = 'blank';
+    return linkElement;
+}
+
+function createAndAppendDivWrapper() {
+    let divWrapper = document.createElement('div');
+    divWrapper.id = "eshop-prices";
+    divWrapper.style = "display: flex; margin-bottom: 20px;";
+
+    if (document.querySelector(".item-price-table")) {
+        document.querySelector(".item-price-table").after(divWrapper);
+    }
+    else if (document.getElementById("price-history")) {
+        document.getElementById("price-history").before(divWrapper);
     }
     else {
-        document.getElementById("price-history").before(divElem);
+        document.querySelector('[aria-controls="descriptionCollapse"]').before(divWrapper);
     }
+
+    return divWrapper;
+}
+
+function correctSvgUseAttribute(useElement) {
+    svgPath = useElement.getAttribute("xlink:href");
+
+    var flagSvgPath = useElement.getAttribute("xlink:href");
+    flagSvgPath = flagSvgPath.substring(flagSvgPath.indexOf('#i-flag'))
+
+    useElement.setAttribute("xlink:href", flagSvgPath);
+}
+
+function createGoldMedalElement() {
+    const img = createMedalElement();
+    img.src = GetLocalResource('/svg/gold.svg');;
+    return img;
+}
+
+function createSilverMedalElement() {
+    const img = createMedalElement();
+    img.src = GetLocalResource('/svg/silver.svg');;
+    return img;
+}
+
+function createBronzeMedalElement() {
+    const img = createMedalElement();
+    img.src = GetLocalResource('/svg/bronze.svg');;
+    return img;
 }
 
 function createMedalElement() {
-    var img = document.createElement('img');
-    img.src = GetLocalResource('/svg/medal.svg');;
+    const img = document.createElement('img');
     img.width = 20;
     img.height = 20;
-    img.style = "vertical-align: bottom;";
+    img.style = "vertical-align: bottom; margin-right: 5px";
     return img;
 }
 
@@ -96,6 +210,21 @@ function parseGameItems(page) {
         }
 
         if (NormalizeTitle(gameTitleEl.innerText) === normalizedSearchTitle) {
+            return element;
+        }
+    }
+
+    const postfix = NormalizeTitle('for Nintendo Switch')
+    // Search with excluding 'for Nintendo Switch' postfix
+    for (let i = 0; i < items.length; i++) {
+        const element = items[i];
+        gameTitleEl = element.querySelector(".games-list-item-title > h5");
+        if (!gameTitleEl) {
+            continue;
+        }
+
+        let normalizedGameTitle = NormalizeTitle(gameTitleEl.innerText).replace(postfix, '');
+        if (normalizedGameTitle === normalizedSearchTitle) {
             return element;
         }
     }
